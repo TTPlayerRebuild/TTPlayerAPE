@@ -1,0 +1,15 @@
+#pragma code_page(65001)
+#include <windows.h>
+100 DIALOGEX 0, 0, 255, 122
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Monkey's Audio 编码设置"
+FONT 9, "宋体"
+BEGIN
+    LTEXT "压缩等级：", -1, 10, 12, 55, 12
+    COMBOBOX 100, 67, 9, 177, 100, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT "输出精度：", -1, 10, 40, 55, 12
+    COMBOBOX 101, 67, 37, 177, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT "压缩等级不改变音质。降低位深会降低精度。\n自动模式保留原播放器的浮点转 16 位行为。", -1, 10, 65, 235, 26
+    DEFPUSHBUTTON "确定", IDOK, 134, 99, 52, 15
+    PUSHBUTTON "取消", IDCANCEL, 192, 99, 52, 15
+END

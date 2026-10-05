@@ -1,0 +1,5 @@
+LIBRARY ttp_ape
+EXPORTS
+    ttpGetSoundAddIn=_ttpGetSoundAddIn@4 @1
+    _FillWaveFormatEx@16=_TTPlayerFillWaveFormatEx@16 @2
+    _FillWaveHeader@16=_TTPlayerFillWaveHeader@16 @3
