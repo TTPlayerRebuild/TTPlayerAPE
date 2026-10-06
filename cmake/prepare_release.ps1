@@ -34,9 +34,4 @@ ZIP 仅包含 AddIn/ttp_ape.dll 和 SHA256SUMS.txt；版权与许可证保留在
 [VC-LTL 许可证]($repoUrl/blob/$Commit/docs/licenses/VC-LTL-LICENSE.txt)
 [YY-Thunks 许可证]($repoUrl/blob/$Commit/docs/licenses/YY-Thunks-LICENSE.txt)
 "@
-$notes += "`n`n## Third-party notices`n"
-foreach ($notice in @('third_party/monkeys_audio/LICENSE.txt', 'third_party/monkeys_audio/MD5-LICENSE.txt',
-    'docs/licenses/VC-LTL-LICENSE.txt', 'docs/licenses/YY-Thunks-LICENSE.txt')) {
-    $notes += "`n### $notice`n`n" + (Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot) $notice) -Raw -Encoding UTF8)
-}
 $notes | Set-Content -LiteralPath (Join-Path $ArtifactDirectory 'release-notes.md') -Encoding UTF8
