@@ -228,12 +228,12 @@ class ApeEncoder final : public Encoder, public Metadata {
                 // Original host reopens the path on final Release. Drop our
                 // file lock first, matching original encoder destruction.
                 // Rebuilt hosts save immediately and report Set/Commit errors.
-                check(io_->input.stream->Commit(STGC_DEFAULT));
+                commit_stream(io_->input.stream.p);
                 io_.reset();
                 metadata.reset();
             }
             if (io_)
-                check(io_->input.stream->Commit(STGC_DEFAULT));
+                commit_stream(io_->input.stream.p);
             return S_OK;
         });
         if (SUCCEEDED(result_))

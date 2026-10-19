@@ -35,7 +35,7 @@ template <class Interface> class Factory final : public Interface {
         return encoder ? make_encoder(out) : make_reader(out);
     }
     HRESULT STDMETHODCALLTYPE Name(wchar_t **out) override {
-        return text(encoder ? L"Monkey's Audio(APE) 编码器(mac v13.27)" : L"APE Reader", out);
+        return text(encoder ? L"Monkey's Audio(APE) 编码器(mac v13.30)" : L"APE Reader", out);
     }
     HRESULT STDMETHODCALLTYPE Extensions(wchar_t **out) {
         return text(L"Monkey's Audio 音频文件(*.ape;*.mac;*.apl)", out);

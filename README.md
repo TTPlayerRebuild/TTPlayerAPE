@@ -1,7 +1,11 @@
 # ttp_ape
 
 供千千静听原版 5.7.9 与 TTPlayer Rebuild 使用的独立 x86 APE 插件。
-接口根据原版 `ttp_ape.dll` 的伪代码、导出、虚表和宿主调用链恢复；编解码核心使用固定版本的 Monkey's Audio SDK 13.27。
+接口根据原版 `ttp_ape.dll` 的伪代码、导出、虚表和宿主调用链恢复；编解码核心使用固定版本的 Monkey's Audio SDK 13.30。
+
+2026-10-19：升级至官方 SDK 13.30，并修正旧宿主直接写入流未实现 `Commit` 时误报编码失败的问题。
+仅兼容 `E_NOTIMPL`／`STG_E_INVALIDFUNCTION`，磁盘已满、写入失败等错误仍原样返回。
+详见 [本次验证](docs/VALIDATION_20261019.md)。
 
 ## 功能
 
@@ -26,9 +30,9 @@
 ```
 
 默认使用 `Visual Studio 18 2026`、Win32、Release，优先优化 DLL 体积。
-依赖在构建时下载并校验 SHA-256：Monkey's Audio SDK 13.27、VC-LTL 5.3.1、YY-Thunks 1.2.2。
+依赖在构建时下载并校验 SHA-256：Monkey's Audio SDK 13.30、VC-LTL 5.3.1、YY-Thunks 1.2.2。
 SDK 源码只存在于忽略的构建目录；仓库保留下载脚本、确定性补丁和许可证。
-离线缓存可通过 `-CMakeArguments '-DTTP_APE_SDK_ARCHIVE=绝对路径/MAC_1327_SDK.zip'` 指定，仍会检查固定哈希。
+离线缓存可通过 `-CMakeArguments '-DTTP_APE_SDK_ARCHIVE=绝对路径/MAC_1330_SDK.zip'` 指定，仍会检查固定哈希。
 
 产物：
 

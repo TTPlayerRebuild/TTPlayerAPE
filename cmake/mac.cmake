@@ -1,5 +1,5 @@
 set(TTP_APE_SDK_ARCHIVE "" CACHE FILEPATH "Optional local copy of the pinned official SDK ZIP")
-set(mac_source "${CMAKE_CURRENT_BINARY_DIR}/downloads/MAC_1327_SDK")
+set(mac_source "${CMAKE_CURRENT_BINARY_DIR}/downloads/MAC_1330_SDK")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/prepare_mac.py")
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/prepare_mac.py"
   "${mac_source}" "${TTP_APE_SDK_ARCHIVE}" COMMAND_ERROR_IS_FATAL ANY)

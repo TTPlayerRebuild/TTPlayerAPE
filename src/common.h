@@ -24,6 +24,13 @@ inline void check(HRESULT hr) {
     if (FAILED(hr))
         throw Failure{hr};
 }
+inline void commit_stream(IStream *stream) {
+    // Original host file streams write directly and do not implement Commit.
+    // Only these two capability results are optional; preserve real I/O errors.
+    const HRESULT hr = stream->Commit(STGC_DEFAULT);
+    if (hr != E_NOTIMPL && hr != STG_E_INVALIDFUNCTION)
+        check(hr);
+}
 template <class F> HRESULT protect(F &&f) noexcept {
     try {
         return f();
