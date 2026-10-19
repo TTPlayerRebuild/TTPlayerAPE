@@ -1,3 +1,4 @@
+#include "ttpcomm/audio_format_probe_impl.h"
 #include "stream_io.h"
 #include <shlwapi.h>
 namespace ttp::ape {
@@ -75,7 +76,7 @@ static uint64_t block_number(const std::wstring &s) {
     return n;
 }
 
-class ApeReader final : public Reader, public Metadata, public Thumbnail {
+class ApeReader final : public Reader, public Metadata, public Thumbnail, public ttp::format::InfoSupport {
     LONG references_{1};
     std::unique_ptr<StreamIO> source_, image_;
     std::unique_ptr<Info> info_;
@@ -224,6 +225,9 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail {
   public:
     ~ApeReader() { close(); }
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **out) override {
+        if (!out) return E_POINTER;
+        if (IsEqualIID(iid, ttp::format::iid_info)) { *out=static_cast<ttp::format::SourceInfo*>(this); AddRef(); return S_OK; }
+
         if (!out)
             return E_POINTER;
         *out = nullptr;
@@ -245,7 +249,12 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail {
             delete this;
         return n;
     }
-    HRESULT STDMETHODCALLTYPE Open(IStream *stream, DWORD flags) override {
+    HRESULT STDMETHODCALLTYPE Open(IStream* probe_stream, DWORD probe_flags) override {
+        const auto probed = PrepareFormatInfo(probe_stream, ttp::format::Ape);
+        if (FAILED(probed)) return probed;
+        return CompleteFormatInfo(OpenImpl(probe_stream, probe_flags));
+    }
+    HRESULT OpenImpl(IStream *stream, DWORD flags) {
         close();
         flags_ = flags;
         start_ = end_ = position_ = 0;

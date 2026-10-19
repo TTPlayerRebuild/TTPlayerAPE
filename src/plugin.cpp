@@ -1,3 +1,4 @@
+#include "ttpcomm/audio_format_probe_impl.h"
 #include "common.h"
 namespace ttp::ape {
 HMODULE module{};
@@ -9,12 +10,19 @@ StandardContent standard_content() {
                 return reinterpret_cast<StandardContent>(p);
     return nullptr;
 }
-template <class Interface> class Factory final : public Interface {
+template <class Interface> class Factory final : public Interface, public ttp::format::ProbeSupport {
+protected:
+    DWORD ProbeFamilies() const noexcept override { return encoder ? ttp::format::None : ttp::format::Ape; }
+private:
+
     LONG references_{1};
     static constexpr bool encoder = std::is_same_v<Interface, EncoderCreator>;
 
   public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **out) override {
+        if (!out) return E_POINTER;
+        if (!encoder && IsEqualIID(iid, ttp::format::iid_probe)) { *out=static_cast<ttp::format::Probe*>(this); AddRef(); return S_OK; }
+
         if (!out)
             return E_POINTER;
         *out = nullptr;
