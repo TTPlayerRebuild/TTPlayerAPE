@@ -47,6 +47,9 @@ struct Metadata : IUnknown {
     virtual HRESULT STDMETHODCALLTYPE Get(const char *, wchar_t **) = 0;
     virtual HRESULT STDMETHODCALLTYPE Set(const char *, const wchar_t *) = 0;
 };
+inline constexpr GUID iid_metadata_commit{
+    0x3ab643c1,0xd8a4,0x4d49,{0x9c,0xbb,0xef,0x19,0x6b,0x04,0xb6,0xe7}};
+struct MetadataCommit : IUnknown { virtual HRESULT STDMETHODCALLTYPE Commit() = 0; };
 #pragma pack(push, 4)
 struct Picture {
     DWORD size;

@@ -1,4 +1,5 @@
 #include "ttpcomm/audio_format_probe_impl.h"
+#include "ttpcomm/pcm_format.h"
 #include "stream_io.h"
 #include <shlwapi.h>
 namespace ttp::ape {
@@ -76,14 +77,16 @@ static uint64_t block_number(const std::wstring &s) {
     return n;
 }
 
-class ApeReader final : public Reader, public Metadata, public Thumbnail, public ttp::format::InfoSupport {
+class ApeReader final : public Reader, public Metadata, public Thumbnail, public MetadataCommit, public ttp::format::InfoSupport {
     LONG references_{1};
     std::unique_ptr<StreamIO> source_, image_;
     std::unique_ptr<Info> info_;
     std::unique_ptr<APE::IAPEDecompress> decoder_;
     ComPtr<Metadata> metadata_;
     ComPtr<Thumbnail> pictures_;
-    WAVEFORMATEX format_{};
+    ComPtr<MetadataCommit> host_commit_;
+    bool committed_{};HRESULT commit_result_{S_OK};
+    WAVEFORMATEX format_{}; DWORD channel_mask_{}; WORD valid_bits_{};
     DWORD flags_{}, rate_{}, version_{}, bitrate_{};
     uint64_t start_{}, end_{}, position_{};
     HRESULT decode_failure_{S_OK};
@@ -97,6 +100,7 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
         image_.reset();
         source_.reset();
         pictures_.reset();
+        host_commit_.reset();
         metadata_.reset();
         opened_ = false;
     }
@@ -224,6 +228,11 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
 
   public:
     ~ApeReader() { close(); }
+    HRESULT STDMETHODCALLTYPE Commit() override {
+        if(committed_)return commit_result_;if(!opened_||!host_commit_)return E_UNEXPECTED;
+        committed_=true;decoder_.reset();info_.reset();image_.reset();source_.reset();opened_=false;
+        commit_result_=host_commit_->Commit();return commit_result_;
+    }
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **out) override {
         if (!out) return E_POINTER;
         if (IsEqualIID(iid, ttp::format::iid_info)) { *out=static_cast<ttp::format::SourceInfo*>(this); AddRef(); return S_OK; }
@@ -237,6 +246,8 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
             *out = static_cast<Metadata *>(this);
         else if (same(iid, iid_thumbnail) && pictures_)
             *out = static_cast<Thumbnail *>(this);
+        else if (same(iid, iid_metadata_commit) && host_commit_)
+            *out = static_cast<MetadataCommit *>(this);
         else
             return E_NOINTERFACE;
         AddRef();
@@ -255,6 +266,7 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
         return CompleteFormatInfo(OpenImpl(probe_stream, probe_flags));
     }
     HRESULT OpenImpl(IStream *stream, DWORD flags) {
+        if(committed_)return E_UNEXPECTED;
         close();
         flags_ = flags;
         start_ = end_ = position_ = 0;
@@ -290,10 +302,30 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
                                      : WAVE_FORMAT_PCM;
             format_.nChannels = WORD(channels);
             format_.nSamplesPerSec = rate_;
-            format_.wBitsPerSample = WORD(bits);
+            format_.wBitsPerSample = WORD(bits);valid_bits_=WORD(bits);
             format_.nBlockAlign = WORD(align);
             format_.nAvgBytesPerSec = rate_ * DWORD(align);
             require(format_.wFormatTag != WAVE_FORMAT_IEEE_FLOAT || bits == 32);
+            // APE stores the original WAV header. Preserve its actual speaker
+            // assignment; channel count alone cannot distinguish surround layouts.
+            auto header_bytes=get(Info::APE_INFO_WAV_HEADER_BYTES);
+            if(header_bytes>=12 && header_bytes<=1024*1024){
+                Bytes header(size_t(header_bytes),0);
+                if(info_->GetInfo(Info::APE_INFO_WAV_HEADER_DATA,reinterpret_cast<APE::int64>(header.data()),header_bytes)==0 &&
+                   (!memcmp(header.data(),"RIFF",4)||!memcmp(header.data(),"RF64",4)) && !memcmp(header.data()+8,"WAVE",4)){
+                    for(size_t at=12;at+8<=header.size();){
+                        auto n=le32(header.data()+at+4);if(n>header.size()-at-8)break;
+                        if(!memcmp(header.data()+at,"fmt ",4)&&n>=40){
+                            const auto* f=header.data()+at+8;
+                            if(le16(f)==WAVE_FORMAT_EXTENSIBLE && le16(f+2)==channels && le16(f+14)==bits && le16(f+16)>=22){
+                                const auto valid=le16(f+18);if(valid&&valid<=bits){valid_bits_=valid;channel_mask_=le32(f+20);}
+                            }
+                            break;
+                        }
+                        at+=8+size_t(n)+(n&1);
+                    }
+                }
+            }
             version_ = DWORD(get(Info::APE_INFO_FILE_VERSION));
             bitrate_ = dword(
                 uint64_t(std::max<APE::int64>(0, get(Info::APE_INFO_AVERAGE_BITRATE))) * 1000);
@@ -307,6 +339,8 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
                 if (metadata_)
                     metadata_->QueryInterface(iid_thumbnail,
                                               reinterpret_cast<void **>(pictures_.put()));
+                if (metadata_)
+                    metadata_->QueryInterface(iid_metadata_commit,reinterpret_cast<void**>(host_commit_.put()));
             }
             opened_ = true;
             if (flags & 1)
@@ -334,16 +368,8 @@ class ApeReader final : public Reader, public Metadata, public Thumbnail, public
         return S_OK;
     }
     HRESULT STDMETHODCALLTYPE Format(WAVEFORMATEX **p) override {
-        if (!p)
-            return E_POINTER;
-        *p = nullptr;
-        if (!opened_)
-            return E_UNEXPECTED;
-        *p = static_cast<WAVEFORMATEX *>(CoTaskMemAlloc(sizeof(format_)));
-        if (!*p)
-            return E_OUTOFMEMORY;
-        **p = format_;
-        return S_OK;
+        if(!p)return E_POINTER;*p=nullptr;if(!opened_)return E_UNEXPECTED;
+        return ttp::pcm::copy_format(format_, channel_mask_, valid_bits_, p);
     }
     HRESULT STDMETHODCALLTYPE BufferSize(DWORD *p) override {
         if (!p)

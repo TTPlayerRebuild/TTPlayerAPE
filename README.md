@@ -1,5 +1,7 @@
 # ttp_ape
 
+最新补全与验收：[2026-10-24](docs/COMPLETION_20261024.md)。
+
 供千千静听原版 5.7.9 与 TTPlayer Rebuild 使用的独立 x86 APE 插件。
 接口根据原版 `ttp_ape.dll` 的伪代码、导出、虚表和宿主调用链恢复；编解码核心使用固定版本的 Monkey's Audio SDK 13.30。
 
